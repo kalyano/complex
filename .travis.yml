@@ -1,0 +1,35 @@
+sudo: required
+
+services:
+    - docker
+
+before_install:
+    - docker build -t kalyano/react-test -f ./client/Dockerfile-dev ./client
+
+scripts:
+    - docker run -e CI=true kalyano/react-test npm test
+
+after_success:
+    - docker build -t kalyano/multi-client ./client
+    - docker build -t kalyano/multi-nginx ./nginx
+    - docker build -t kalyano/multi-server ./server
+    - docker build -t kalyano/multi-worker ./worker
+    # Login to docker CLI
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+    # Take above images and push to docker hub
+    - docker push kalyano/multi-client
+    - docker push kalyano/multi-nginx
+    - docker push kalyano/multi-server
+    - docker push kalyano/multi-worker
+
+comment:
+    deploy:
+        provider: elasticbeanstalk
+        access_key_id:
+        secure: "Encrypted <access-key-id>="
+        secret_access_key:
+        secure: "Encypted <secret-access-key>="
+        region: "us-east-1"
+        app: "example-app-name"
+        env: "example-app-environment"
+        bucket_name: "the-target-S3-bucket"
